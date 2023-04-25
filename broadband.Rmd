@@ -1,0 +1,108 @@
+---
+title: "Broadband access in Texas"
+output:
+  html_document:
+    df_print: paged
+---
+
+## Goals
+
+- Introduce the official U.S. Census Bureau site data.census.gov.
+- Explain API keys and set them up for census data.
+- Introduce and explore the tidycensus package to pull census data into R.
+- Introduce some mapping techniques using tidycensus. Introduce the concept of joining data together.
+- Note some other packages and methods to use census data.
+
+## Setup
+
+```{r setup}
+library(tidyverse)
+library(tidycensus)
+library(scales)
+```
+
+## Download variable lists
+
+```{r vars}
+v19_subject <- load_variables(2019, "acs5/subject", cache = TRUE)
+```
+
+## Test variable
+
+Retrieved this from [table](https://data.census.gov/cedsci/table?q=broadband%20access&tid=ACSST5Y2019.S2801). Overall value for U.S.
+
+Getting the broadband percent data
+
+broadband of any type: S2801_C02_014
+
+```{r test-var}
+get_acs(
+  year = 2019,
+  variables = c(broadband = "S2801_C02_014"),
+  geography = "us"
+)
+```
+
+### Getting broadband for Texas counties
+
+```{r tx-broadband}
+broadband_tx <- get_acs(
+  year = 2019,
+  variables = c(broadband = "S2801_C02_014"),
+  geography = "county",
+  state = "TX"
+)
+
+broadband_tx
+```
+
+## Arrange to get counties with lowest/highest percentages of broadband
+
+### Counties with lowest access
+
+```{r lowest}
+broadband_tx %>% 
+  arrange(estimate) %>%
+  head(10)
+```
+
+### Counties with highest access
+
+```{r highest}
+broadband_tx %>% 
+  arrange(estimate %>% desc()) %>% 
+  head(10)
+```
+
+## Get map data
+
+```{r bb-geo}
+broadband_tx_geo <- get_acs(
+  year = 2019,
+  variables = c(broadband = "S2801_C02_014"),
+  geography = "county",
+  state = "TX",
+  geometry = TRUE
+)
+
+broadband_tx_geo
+```
+
+## Map broadband access in Texas
+
+```{r bb-map}
+broadband_tx_geo %>% 
+  ggplot() +
+  geom_sf(aes(fill = estimate), color = "white", size = .1) +
+  theme_void() +
+  labs(
+    title = "Broadband access in Texas counties",
+    caption = "Source: Census Bureau/ACS 5-year 2019"
+  ) +
+  scale_fill_distiller(
+    palette = "Oranges",
+    direction = 1,
+    name = "% households\nwith broadband"
+  ) +
+  theme(plot.margin = unit(c(10,0,10,0), "pt"))
+```
